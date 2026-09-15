@@ -126,7 +126,7 @@ jobs:
           export LC_ALL=C
           source build/envsetup.sh
           lunch "$LUNCH_TARGET"
-          mka -j"$(nproc)" systemimage
+          m -j"$(nproc)" systemimage
           test -s "$PRODUCT_OUT/system.img"
 
       - name: Convert AB GSI to A-only image
