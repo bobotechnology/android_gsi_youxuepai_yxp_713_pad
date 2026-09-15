@@ -9,7 +9,7 @@ the A-only image required by this device.
 
 - PHH release manifest: `v313`
 - Android release: `android-11.0.0_r48`
-- Product: `treble_arm64_bvS-userdebug`
+- Product: `treble_arm64_bvN-userdebug` (rootless)
 - Output: `system-roar-arm64-aonly-vanilla-u90-front<orientation>.img.xz`
 
 The pinned revisions are in `config/u90-a11-v313.env`. The workflow validates
@@ -39,6 +39,13 @@ present in the built image.
 The workflow accepts `0`, `90`, `180`, or `270` as a manual-dispatch input.
 `90` is the initial 180-degree correction candidate; `270` is the no-change
 control value.
+
+## Root
+
+The `N` product variant does not include PHH's `phh-su` binary or
+`me.phh.superuser` manager. It also does not bundle SuperSU or Magisk. Users
+who need root can patch and flash an appropriate boot image with Magisk
+separately.
 
 ## Mainland network validation
 

@@ -52,7 +52,14 @@ jobs:
           sudo rm -rf /opt/ghc
           sudo rm -rf /usr/local/share/boost
           sudo rm -rf /usr/share/swift
+          sudo rm -rf /opt/az
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/share/miniconda
+          sudo rm -rf /usr/local/lib/node_modules
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          if command -v docker >/dev/null; then
+            sudo docker system prune --all --force --volumes
+          fi
           sudo apt-get clean
           sudo rm -rf /var/lib/apt/lists/*
           df -h
@@ -114,9 +121,14 @@ jobs:
             bash generate.sh
           )
           test -s device/phh/treble/AndroidProducts.mk
-          test -s device/phh/treble/treble_arm64_bvS.mk
+          test -s device/phh/treble/treble_arm64_bvN.mk
           rm -f vendor/gapps/interfaces/wifi_ext/Android.bp
           bash "$GITHUB_WORKSPACE/gsi/scripts/apply-u90-patches.sh" "$PWD"
+          # Git metadata is no longer needed after the pinned revision and patch checks.
+          du -sh .repo
+          rm -rf .repo
+          find . -name .git -type f -delete
+          df -h .
 
       - name: Build ARM64 vanilla system image
         run: |
