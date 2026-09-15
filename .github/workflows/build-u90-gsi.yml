@@ -65,7 +65,7 @@ jobs:
             gcc-multilib git gnupg gperf lib32ncurses5-dev lib32readline-dev \
             lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libssl-dev \
             libxml2-utils lz4 lzop openjdk-11-jdk pngcrush rsync schedtool \
-            squashfs-tools unzip xattr xz-utils xmlstarlet xsltproc zip zlib1g-dev
+            squashfs-tools unzip xattr xz-utils xsltproc zip zlib1g-dev
 
       - name: Install repo tool
         run: |
@@ -110,8 +110,6 @@ jobs:
           cd "$SOURCE_DIR"
           git -C device/phh/treble clean -fdx
           bash device/phh/treble/generate.sh
-          git -C vendor/foss clean -fdx
-          bash vendor/foss/update.sh
           rm -f vendor/gapps/interfaces/wifi_ext/Android.bp
           bash "$GITHUB_WORKSPACE/gsi/scripts/apply-u90-patches.sh" "$PWD"
 
