@@ -109,7 +109,12 @@ jobs:
         run: |
           cd "$SOURCE_DIR"
           git -C device/phh/treble clean -fdx
-          bash device/phh/treble/generate.sh
+          (
+            cd device/phh/treble
+            bash generate.sh
+          )
+          test -s device/phh/treble/AndroidProducts.mk
+          test -s device/phh/treble/treble_arm64_bvS.mk
           rm -f vendor/gapps/interfaces/wifi_ext/Android.bp
           bash "$GITHUB_WORKSPACE/gsi/scripts/apply-u90-patches.sh" "$PWD"
 
