@@ -61,5 +61,7 @@ grep -Fq 'def_accelerometer_rotation' \
     "$GSI_ROOT/patches/frameworks-base/0001-u90-settings-defaults.patch"
 grep -Fq 'U90_FRONT_CAMERA_ORIENTATION' \
     "$GSI_ROOT/patches/device-phh-treble/0001-u90-front-camera-orientation-property.patch"
+grep -Fq 'PRODUCT_CHARACTERISTICS := tablet' \
+    "$GSI_ROOT/patches/device-phh-treble/0001-u90-front-camera-orientation-property.patch"
 grep -Fq 'connect.rom.miui.com/generate_204' \
     "$GSI_ROOT/patches/packages-modules-networkstack/0001-yxp-713-pad-mainland-captive-portal-endpoints.patch"

@@ -23,7 +23,10 @@ these persistent defaults after an in-place system-only upgrade.
 
 For a new Settings database, the U90 patch enables auto-rotation and changes
 the default display timeout from 60 seconds to 5 minutes. It intentionally
-does not alter density, navigation mode, boot, vendor, or the kernel.
+does not alter density, navigation mode, boot, vendor, or the kernel. The
+product characteristic is explicitly set to `tablet`; density remains under
+the working vendor display configuration so the existing touch and orientation
+behavior is preserved.
 
 ## Front camera patch
 
