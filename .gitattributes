@@ -1,0 +1,6 @@
+* text=auto
+*.env text eol=lf
+*.patch text eol=lf -whitespace
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf

@@ -1,0 +1,185 @@
+name: Build U90 Android 11 GSI
+
+on:
+  workflow_dispatch:
+    inputs:
+      front_sensor_orientation:
+        description: U90 front camera sensor orientation metadata
+        required: true
+        default: "90"
+        type: choice
+        options:
+          - "90"
+          - "270"
+          - "0"
+          - "180"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: u90-gsi-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  SOURCE_DIR: android
+  ARTIFACT_DIR: artifacts
+
+jobs:
+  build:
+    name: Android 11 v313 front-${{ inputs.front_sensor_orientation }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout build recipe
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Validate build recipe and input
+        run: |
+          bash gsi/scripts/validate-recipe.sh
+          case '${{ inputs.front_sensor_orientation }}' in
+            0|90|180|270) ;;
+            *) echo 'invalid front sensor orientation' >&2; exit 1 ;;
+          esac
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+          df -h
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison build-essential ccache curl file flex g++-multilib \
+            gcc-multilib git gnupg gperf lib32ncurses5-dev lib32readline-dev \
+            lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libssl-dev \
+            libxml2-utils lz4 lzop openjdk-11-jdk pngcrush rsync schedtool \
+            squashfs-tools unzip xattr xz-utils xsltproc zip zlib1g-dev
+
+      - name: Install repo tool
+        run: |
+          sudo curl --fail --location --retry 3 \
+            -o /usr/local/bin/repo \
+            https://storage.googleapis.com/git-repo-downloads/repo
+          sudo chmod a+x /usr/local/bin/repo
+          repo --version
+
+      - name: Prepare immutable v313 manifest
+        run: |
+          source gsi/config/u90-a11-v313.env
+          mkdir -p manifest
+          curl --fail --location --retry 3 \
+            "$RELEASE_MANIFEST_URL" \
+            -o manifest/manifest.xml
+          printf '%s  %s\n' "$RELEASE_MANIFEST_SHA256" manifest/manifest.xml | sha256sum -c -
+          sed -i \
+            's#<remote name="aosp" fetch="\.\." review="https://android-review.googlesource.com/"/>#<remote name="aosp" fetch="https://android.googlesource.com/" review="https://android-review.googlesource.com/"/>#' \
+            manifest/manifest.xml
+          git -C manifest init -q
+          git -C manifest config user.name 'U90 GSI build'
+          git -C manifest config user.email 'u90-gsi@local'
+          git -C manifest add manifest.xml
+          git -C manifest commit -qm 'Pinned PHH v313 manifest'
+
+      - name: Sync Android source on runner
+        run: |
+          source gsi/config/u90-a11-v313.env
+          mkdir -p "$SOURCE_DIR"
+          cd "$SOURCE_DIR"
+          repo init --depth=1 --partial-clone --clone-filter=blob:limit=10M \
+            --groups="$REPO_GROUPS" \
+            -u "file://$GITHUB_WORKSPACE/manifest" \
+            -m manifest.xml
+          repo sync -c --no-tags --no-clone-bundle --optimized-fetch --prune \
+            -j"$REPO_SYNC_JOBS"
+          repo status
+
+      - name: Generate PHH source and apply U90 patches
+        run: |
+          cd "$SOURCE_DIR"
+          git -C device/phh/treble clean -fdx
+          bash device/phh/treble/generate.sh
+          git -C vendor/foss clean -fdx
+          bash vendor/foss/update.sh
+          rm -f vendor/gapps/interfaces/wifi_ext/Android.bp
+          bash "$GITHUB_WORKSPACE/gsi/scripts/apply-u90-patches.sh" "$PWD"
+
+      - name: Build ARM64 vanilla system image
+        run: |
+          source gsi/config/u90-a11-v313.env
+          export U90_FRONT_CAMERA_ORIENTATION='${{ inputs.front_sensor_orientation }}'
+          cd "$SOURCE_DIR"
+          export LC_ALL=C
+          source build/envsetup.sh
+          lunch "$LUNCH_TARGET"
+          mka -j"$(nproc)" systemimage
+          test -s "$PRODUCT_OUT/system.img"
+
+      - name: Convert AB GSI to A-only image
+        run: |
+          source gsi/config/u90-a11-v313.env
+          mkdir -p "$ARTIFACT_DIR"
+          system_image="$GITHUB_WORKSPACE/$SOURCE_DIR/$PRODUCT_OUT/system.img"
+          sas_dir="$GITHUB_WORKSPACE/sas-creator"
+          git clone --depth=1 --filter=blob:none --no-checkout \
+            "$SAS_CREATOR_URL" "$sas_dir"
+          git -C "$sas_dir" fetch --depth=1 origin "$SAS_CREATOR_REV"
+          git -C "$sas_dir" checkout --detach "$SAS_CREATOR_REV"
+          git clone --depth=1 --filter=blob:none --no-checkout \
+            "$VENDOR_VNDK_URL" "$sas_dir/vendor_vndk"
+          git -C "$sas_dir/vendor_vndk" fetch --depth=1 origin "$VENDOR_VNDK_REV"
+          git -C "$sas_dir/vendor_vndk" checkout --detach "$VENDOR_VNDK_REV"
+          export PATH="$GITHUB_WORKSPACE/$SOURCE_DIR/out/host/linux-x86/bin:$PATH"
+          sudo env PATH="$PATH" ANDROID_BUILD_TOP="$GITHUB_WORKSPACE/$SOURCE_DIR" \
+            bash "$sas_dir/run.sh" 64 "$system_image"
+          test -s "$sas_dir/s.img"
+          output="$ARTIFACT_DIR/system-roar-arm64-aonly-vanilla-u90-front${{ inputs.front_sensor_orientation }}.img.xz"
+          xz --threads=0 --check=crc64 -9e -c "$sas_dir/s.img" > "$output"
+          sha256sum "$system_image" > "$ARTIFACT_DIR/system-ab.img.sha256"
+
+      - name: Verify image and record provenance
+        run: |
+          source gsi/config/u90-a11-v313.env
+          image="$GITHUB_WORKSPACE/sas-creator/s.img"
+          bash gsi/scripts/verify-u90-artifact.sh \
+            "$SOURCE_DIR/$PRODUCT_OUT" \
+            "$image" \
+            "$ARTIFACT_DIR" \
+            '${{ inputs.front_sensor_orientation }}'
+          cd "$SOURCE_DIR"
+          repo manifest -r > "$GITHUB_WORKSPACE/$ARTIFACT_DIR/source-manifest.xml"
+          git -C frameworks/av diff --check
+          git -C frameworks/base diff --check
+          git -C device/phh/treble diff --check
+          {
+            printf 'treble_release=%s\n' "$TREBLE_RELEASE"
+            printf 'frameworks_av_rev=%s\n' "$FRAMEWORKS_AV_REV"
+            printf 'frameworks_base_rev=%s\n' "$FRAMEWORKS_BASE_REV"
+            printf 'device_phh_treble_rev=%s\n' "$DEVICE_PHH_TREBLE_REV"
+            printf 'sas_creator_rev=%s\n' "$SAS_CREATOR_REV"
+            printf 'vendor_vndk_rev=%s\n' "$VENDOR_VNDK_REV"
+            printf 'front_sensor_orientation=%s\n' '${{ inputs.front_sensor_orientation }}'
+            printf 'lunch_target=%s\n' "$LUNCH_TARGET"
+          } > "$GITHUB_WORKSPACE/$ARTIFACT_DIR/build-info.txt"
+          sha256sum "$GITHUB_WORKSPACE/$ARTIFACT_DIR"/* > \
+            "$GITHUB_WORKSPACE/$ARTIFACT_DIR/SHA256SUMS"
+
+      - name: Upload A-only GSI artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: u90-a11-v313-aonly-front${{ inputs.front_sensor_orientation }}-${{ github.run_number }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
