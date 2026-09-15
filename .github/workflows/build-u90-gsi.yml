@@ -105,7 +105,7 @@ jobs:
             -j"$REPO_SYNC_JOBS"
           repo status
 
-      - name: Generate PHH source and apply U90 patches
+      - name: Generate PHH source and apply device patches
         run: |
           cd "$SOURCE_DIR"
           git -C device/phh/treble clean -fdx
@@ -162,11 +162,13 @@ jobs:
           git -C frameworks/av diff --check
           git -C frameworks/base diff --check
           git -C device/phh/treble diff --check
+          git -C packages/modules/NetworkStack diff --check
           {
             printf 'treble_release=%s\n' "$TREBLE_RELEASE"
             printf 'frameworks_av_rev=%s\n' "$FRAMEWORKS_AV_REV"
             printf 'frameworks_base_rev=%s\n' "$FRAMEWORKS_BASE_REV"
             printf 'device_phh_treble_rev=%s\n' "$DEVICE_PHH_TREBLE_REV"
+            printf 'networkstack_rev=%s\n' "$NETWORKSTACK_REV"
             printf 'sas_creator_rev=%s\n' "$SAS_CREATOR_REV"
             printf 'vendor_vndk_rev=%s\n' "$VENDOR_VNDK_REV"
             printf 'front_sensor_orientation=%s\n' '${{ inputs.front_sensor_orientation }}'

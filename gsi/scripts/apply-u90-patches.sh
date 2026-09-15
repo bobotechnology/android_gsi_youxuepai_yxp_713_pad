@@ -50,11 +50,15 @@ apply_patchset() {
 assert_revision "$SOURCE_ROOT/frameworks/av" "$FRAMEWORKS_AV_REV"
 assert_revision "$SOURCE_ROOT/frameworks/base" "$FRAMEWORKS_BASE_REV"
 assert_revision "$SOURCE_ROOT/device/phh/treble" "$DEVICE_PHH_TREBLE_REV"
+assert_revision "$SOURCE_ROOT/packages/modules/NetworkStack" "$NETWORKSTACK_REV"
 
 apply_patchset "$SOURCE_ROOT/frameworks/av" "$GSI_ROOT/patches/frameworks-av"
 apply_patchset "$SOURCE_ROOT/frameworks/base" "$GSI_ROOT/patches/frameworks-base"
 apply_patchset "$SOURCE_ROOT/device/phh/treble" "$GSI_ROOT/patches/device-phh-treble"
+apply_patchset "$SOURCE_ROOT/packages/modules/NetworkStack" \
+    "$GSI_ROOT/patches/packages-modules-networkstack"
 
 git -C "$SOURCE_ROOT/frameworks/av" diff --check
 git -C "$SOURCE_ROOT/frameworks/base" diff --check
 git -C "$SOURCE_ROOT/device/phh/treble" diff --check
+git -C "$SOURCE_ROOT/packages/modules/NetworkStack" diff --check

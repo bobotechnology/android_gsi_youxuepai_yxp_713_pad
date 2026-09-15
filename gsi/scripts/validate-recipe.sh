@@ -14,6 +14,7 @@ for variable in \
     FRAMEWORKS_AV_REV \
     FRAMEWORKS_BASE_REV \
     DEVICE_PHH_TREBLE_REV \
+    NETWORKSTACK_REV \
     SAS_CREATOR_URL \
     SAS_CREATOR_REV \
     VENDOR_VNDK_URL \
@@ -37,6 +38,7 @@ for revision in \
     "$FRAMEWORKS_AV_REV" \
     "$FRAMEWORKS_BASE_REV" \
     "$DEVICE_PHH_TREBLE_REV" \
+    "$NETWORKSTACK_REV" \
     "$SAS_CREATOR_REV" \
     "$VENDOR_VNDK_REV"; do
     if [[ ! "$revision" =~ ^[0-9a-f]{40}$ ]]; then
@@ -48,7 +50,8 @@ done
 for patch in \
     "$GSI_ROOT/patches/frameworks-av/0001-u90-front-camera-orientation-override.patch" \
     "$GSI_ROOT/patches/frameworks-base/0001-u90-settings-defaults.patch" \
-    "$GSI_ROOT/patches/device-phh-treble/0001-u90-front-camera-orientation-property.patch"; do
+    "$GSI_ROOT/patches/device-phh-treble/0001-u90-front-camera-orientation-property.patch" \
+    "$GSI_ROOT/patches/packages-modules-networkstack/0001-yxp-713-pad-mainland-captive-portal-endpoints.patch"; do
     test -s "$patch"
 done
 
@@ -58,3 +61,5 @@ grep -Fq 'def_accelerometer_rotation' \
     "$GSI_ROOT/patches/frameworks-base/0001-u90-settings-defaults.patch"
 grep -Fq 'U90_FRONT_CAMERA_ORIENTATION' \
     "$GSI_ROOT/patches/device-phh-treble/0001-u90-front-camera-orientation-property.patch"
+grep -Fq 'connect.rom.miui.com/generate_204' \
+    "$GSI_ROOT/patches/packages-modules-networkstack/0001-yxp-713-pad-mainland-captive-portal-endpoints.patch"

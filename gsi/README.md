@@ -2,7 +2,7 @@
 
 This directory is a small, pinned build recipe. It does not contain an Android
 source checkout. The GitHub Actions runner downloads the Android 11 source,
-applies the two U90 patches, builds an ARM64 vanilla AB GSI, and converts it to
+applies the device-specific framework and NetworkStack patches, builds an ARM64 vanilla AB GSI, and converts it to
 the A-only image required by this device.
 
 ## Baseline
@@ -36,6 +36,17 @@ present in the built image.
 The workflow accepts `0`, `90`, `180`, or `270` as a manual-dispatch input.
 `90` is the initial 180-degree correction candidate; `270` is the no-change
 control value.
+
+## Mainland network validation
+
+NetworkStack defaults use `connect.rom.miui.com/generate_204` for the HTTP and
+HTTPS validation probes, with `connectivitycheck.platform.hicloud.com/generate_204`
+as the fallback. The patch also replaces the MCC 460 resource defaults, so a
+Chinese SIM cannot restore a Google validation endpoint.
+
+This does not suppress SystemUI status icons. A `!` or `X` remains meaningful
+for an actual failed validation or a captive portal, but should clear normally
+when the selected endpoint returns HTTP 204.
 
 ## Build and artifacts
 
