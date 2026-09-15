@@ -65,7 +65,7 @@ jobs:
             gcc-multilib git gnupg gperf lib32ncurses5-dev lib32readline-dev \
             lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libssl-dev \
             libxml2-utils lz4 lzop openjdk-11-jdk pngcrush rsync schedtool \
-            squashfs-tools unzip xattr xz-utils xsltproc zip zlib1g-dev
+            squashfs-tools unzip xattr xz-utils xmlstarlet xsltproc zip zlib1g-dev
 
       - name: Install repo tool
         run: |
