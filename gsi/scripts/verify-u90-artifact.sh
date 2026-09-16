@@ -33,6 +33,7 @@ grep -R -Fqx 'persist.sys.locale=zh-CN' "$PRODUCT_OUT"
 grep -R -Fqx 'persist.sys.timezone=Asia/Shanghai' "$PRODUCT_OUT"
 grep -R -Fqx 'persist.sys.time_12_24=24' "$PRODUCT_OUT"
 grep -R -Fqx 'ro.build.characteristics=tablet' "$PRODUCT_OUT"
+grep -R -Fqx 'ro.debuggable=0' "$PRODUCT_OUT"
 strings "$CAMERA_SERVICE" | grep -Fq 'U90 camera %s: overriding sensor orientation'
 
 if find "$SYSTEM_TREE" -type f \( -name phh-su -o -iname '*superuser*.apk' \) -print -quit | grep -q .; then
