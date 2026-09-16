@@ -34,7 +34,7 @@ if [[ ! "$RELEASE_MANIFEST_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
     exit 1
 fi
 
-if [[ "$LUNCH_TARGET" != 'treble_arm64_bvN-user' ]]; then
+if [[ "$LUNCH_TARGET" != 'treble_arm64_bvN-userdebug' ]]; then
     echo 'LUNCH_TARGET must select the rootless ARM64 vanilla AB product' >&2
     exit 1
 fi
