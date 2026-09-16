@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+readonly GSI_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+readonly CONFIG="$GSI_ROOT/config/u90-a11-v313.env"
+
+source "$CONFIG"
+
 if [[ $# -ne 4 ]]; then
     echo "usage: $0 <product-out> <aonly-image> <artifact-dir> <orientation>" >&2
     exit 64
@@ -23,10 +29,12 @@ test -d "$ARTIFACT_DIR"
 readonly PROP_FILE="$(find "$PRODUCT_OUT" -type f -path '*/etc/prop.default' -print -quit)"
 readonly CAMERA_SERVICE="$(find "$PRODUCT_OUT" -type f -name libcameraservice.so -print -quit)"
 readonly SYSTEM_TREE="$PRODUCT_OUT/system"
+readonly FCITX5_APK="$(find "$SYSTEM_TREE" -type f -path '*U90Fcitx5*' -name '*.apk' -print -quit)"
 
 test -n "$PROP_FILE"
 test -n "$CAMERA_SERVICE"
 test -d "$SYSTEM_TREE"
+test -n "$FCITX5_APK"
 grep -Fx "ro.u90.camera.front.orientation=$ORIENTATION" "$PROP_FILE"
 grep -R -Fqx 'ro.product.locale=zh-CN' "$PRODUCT_OUT"
 grep -R -Fqx 'persist.sys.locale=zh-CN' "$PRODUCT_OUT"
@@ -34,6 +42,18 @@ grep -R -Fqx 'persist.sys.timezone=Asia/Shanghai' "$PRODUCT_OUT"
 grep -R -Fqx 'persist.sys.time_12_24=24' "$PRODUCT_OUT"
 grep -R -Fqx 'ro.build.characteristics=tablet' "$PRODUCT_OUT"
 strings "$CAMERA_SERVICE" | grep -Fq 'U90 camera %s: overriding sensor orientation'
+
+if [[ "$FCITX5_APK" != "$SYSTEM_TREE/app/"* ]]; then
+    echo 'Fcitx5 must be installed as an unprivileged system app' >&2
+    exit 1
+fi
+
+actual_fcitx5_hash="$(sha256sum "$FCITX5_APK" | awk '{print $1}')"
+if [[ "$actual_fcitx5_hash" != "$FCITX5_APK_SHA256" ]]; then
+    printf 'built Fcitx5 APK SHA-256 mismatch: expected %s, got %s\n' \
+        "$FCITX5_APK_SHA256" "$actual_fcitx5_hash" >&2
+    exit 1
+fi
 
 if find "$SYSTEM_TREE" -type f \( -name phh-su -o -iname '*superuser*.apk' \) -print -quit | grep -q .; then
     echo 'built system contains a PHH root component' >&2

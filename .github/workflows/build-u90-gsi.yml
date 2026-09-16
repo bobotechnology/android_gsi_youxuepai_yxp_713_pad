@@ -3,6 +3,29 @@ name: Build U90 Android 11 GSI
 on:
   workflow_dispatch:
     inputs:
+      runner_mode:
+        description: Runner lifecycle mode. Use self-hosted only with a persistent Linux runner.
+        required: true
+        default: github-hosted
+        type: choice
+        options:
+          - github-hosted
+          - self-hosted
+      runner_labels:
+        description: 'JSON runner label array. Self-hosted example: ["self-hosted","linux","x64","u90-gsi"]'
+        required: true
+        default: '["ubuntu-22.04"]'
+        type: string
+      timeout_minutes:
+        description: Integer job timeout. Use 360 for GitHub-hosted or 1440 for the U90 self-hosted runner.
+        required: true
+        default: "360"
+        type: string
+      install_dependencies:
+        description: Install Ubuntu build dependencies. Disable only after provisioning a self-hosted runner.
+        required: true
+        default: true
+        type: boolean
       front_sensor_orientation:
         description: U90 front camera sensor orientation metadata
         required: true
@@ -27,26 +50,60 @@ env:
 
 jobs:
   build:
-    name: Android 11 v313 front-${{ inputs.front_sensor_orientation }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 360
+    name: Android 11 v313 ${{ inputs.runner_mode }} front-${{ inputs.front_sensor_orientation }}
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
+    timeout-minutes: ${{ fromJSON(inputs.timeout_minutes) }}
 
     steps:
       - name: Checkout build recipe
         uses: actions/checkout@v7
         with:
           fetch-depth: 1
+          clean: ${{ inputs.runner_mode == 'github-hosted' }}
 
       - name: Validate build recipe and input
+        env:
+          RUNNER_MODE: ${{ inputs.runner_mode }}
+          RUNNER_LABELS: ${{ inputs.runner_labels }}
+          BUILD_TIMEOUT_MINUTES: ${{ inputs.timeout_minutes }}
         run: |
           bash gsi/scripts/validate-recipe.sh
+          case "$RUNNER_MODE" in
+            github-hosted|self-hosted) ;;
+            *) echo 'invalid runner mode' >&2; exit 1 ;;
+          esac
+          if [[ ! "$BUILD_TIMEOUT_MINUTES" =~ ^[1-9][0-9]*$ ]]; then
+            echo 'timeout_minutes must be a positive integer' >&2
+            exit 1
+          fi
+          if [[ "$RUNNER_MODE" == github-hosted && "$BUILD_TIMEOUT_MINUTES" -gt 360 ]]; then
+            echo 'GitHub-hosted jobs cannot exceed 360 minutes' >&2
+            exit 1
+          fi
+          if [[ "$RUNNER_MODE" == self-hosted ]]; then
+            if [[ "$BUILD_TIMEOUT_MINUTES" -gt 7200 ]]; then
+              echo 'self-hosted timeout must not exceed 7200 minutes' >&2
+              exit 1
+            fi
+            if [[ "$RUNNER_LABELS" != *'"self-hosted"'* ]]; then
+              echo 'self-hosted runner labels must include self-hosted' >&2
+              exit 1
+            fi
+          fi
           case '${{ inputs.front_sensor_orientation }}' in
             0|90|180|270) ;;
             *) echo 'invalid front sensor orientation' >&2; exit 1 ;;
           esac
 
       - name: Free disk space
+        env:
+          RUNNER_MODE: ${{ inputs.runner_mode }}
         run: |
+          if [[ "$RUNNER_MODE" == self-hosted ]]; then
+            echo 'Preserving persistent self-hosted source, output, and ccache directories.'
+            df -h
+            exit 0
+          fi
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
@@ -65,6 +122,7 @@ jobs:
           df -h
 
       - name: Install build dependencies
+        if: ${{ inputs.install_dependencies }}
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -75,16 +133,37 @@ jobs:
             squashfs-tools unzip xattr xz-utils xsltproc zip zlib1g-dev
 
       - name: Install repo tool
+        env:
+          RUNNER_MODE: ${{ inputs.runner_mode }}
         run: |
-          sudo curl --fail --location --retry 3 \
-            -o /usr/local/bin/repo \
-            https://storage.googleapis.com/git-repo-downloads/repo
-          sudo chmod a+x /usr/local/bin/repo
+          if [[ "$RUNNER_MODE" == github-hosted ]]; then
+            repo_path=/usr/local/bin/repo
+            sudo curl --fail --location --retry 3 \
+              -o "$repo_path" \
+              https://storage.googleapis.com/git-repo-downloads/repo
+            sudo chmod a+x "$repo_path"
+          else
+            repo_dir="$HOME/.local/bin"
+            repo_path="$repo_dir/repo"
+            mkdir -p "$repo_dir"
+            curl --fail --location --retry 3 \
+              -o "$repo_path" \
+              https://storage.googleapis.com/git-repo-downloads/repo
+            chmod a+x "$repo_path"
+            echo "$repo_dir" >> "$GITHUB_PATH"
+            export PATH="$repo_dir:$PATH"
+          fi
           repo --version
+
+      - name: Prepare artifact directory
+        run: |
+          rm -rf "$GITHUB_WORKSPACE/$ARTIFACT_DIR"
+          mkdir -p "$GITHUB_WORKSPACE/$ARTIFACT_DIR"
 
       - name: Prepare immutable v313 manifest
         run: |
           source gsi/config/u90-a11-v313.env
+          rm -rf manifest
           mkdir -p manifest
           curl --fail --location --retry 3 \
             "$RELEASE_MANIFEST_URL" \
@@ -98,6 +177,18 @@ jobs:
           git -C manifest config user.email 'u90-gsi@local'
           git -C manifest add manifest.xml
           git -C manifest commit -qm 'Pinned PHH v313 manifest'
+
+      - name: Fetch and verify Fcitx5 Chinese input method
+        run: |
+          source gsi/config/u90-a11-v313.env
+          apk="$RUNNER_TEMP/$FCITX5_APK_NAME"
+          curl --fail --location --retry 3 \
+            "$FCITX5_APK_URL" \
+            -o "$apk"
+          printf '%s  %s\n' "$FCITX5_APK_SHA256" "$apk" | sha256sum -c -
+          unzip -Z1 "$apk" | grep -Fxq 'AndroidManifest.xml'
+          unzip -Z1 "$apk" | grep -Eq '^lib/arm64-v8a/'
+          printf 'U90_FCITX5_APK=%s\n' "$apk" >> "$GITHUB_ENV"
 
       - name: Sync Android source on runner
         run: |
@@ -113,6 +204,8 @@ jobs:
           repo status
 
       - name: Generate PHH source and apply device patches
+        env:
+          RUNNER_MODE: ${{ inputs.runner_mode }}
         run: |
           cd "$SOURCE_DIR"
           git -C device/phh/treble clean -fdx
@@ -124,10 +217,34 @@ jobs:
           test -s device/phh/treble/treble_arm64_bvN.mk
           rm -f vendor/gapps/interfaces/wifi_ext/Android.bp
           bash "$GITHUB_WORKSPACE/gsi/scripts/apply-u90-patches.sh" "$PWD"
-          # Git metadata is no longer needed after the pinned revision and patch checks.
-          du -sh .repo
-          rm -rf .repo
-          find . -name .git -type f -delete
+          repo manifest -r > "$GITHUB_WORKSPACE/$ARTIFACT_DIR/source-manifest.xml"
+          git -C frameworks/av diff --check
+          git -C frameworks/base diff --check
+          git -C device/phh/treble diff --check
+          git -C packages/modules/NetworkStack diff --check
+          git -C packages/apps/Launcher3 diff --check
+          {
+            source "$GITHUB_WORKSPACE/gsi/config/u90-a11-v313.env"
+            printf 'treble_release=%s\n' "$TREBLE_RELEASE"
+            printf 'frameworks_av_rev=%s\n' "$FRAMEWORKS_AV_REV"
+            printf 'frameworks_base_rev=%s\n' "$FRAMEWORKS_BASE_REV"
+            printf 'device_phh_treble_rev=%s\n' "$DEVICE_PHH_TREBLE_REV"
+            printf 'networkstack_rev=%s\n' "$NETWORKSTACK_REV"
+            printf 'launcher3_rev=%s\n' "$LAUNCHER3_REV"
+            printf 'sas_creator_rev=%s\n' "$SAS_CREATOR_REV"
+            printf 'vendor_vndk_rev=%s\n' "$VENDOR_VNDK_REV"
+            printf 'fcitx5_version=%s\n' "$FCITX5_VERSION"
+            printf 'fcitx5_apk_sha256=%s\n' "$FCITX5_APK_SHA256"
+            printf 'fcitx5_ime_component=%s\n' "$FCITX5_IME_COMPONENT"
+            printf 'front_sensor_orientation=%s\n' '${{ inputs.front_sensor_orientation }}'
+            printf 'lunch_target=%s\n' "$LUNCH_TARGET"
+          } > "$GITHUB_WORKSPACE/$ARTIFACT_DIR/build-info.txt"
+          if [[ "$RUNNER_MODE" == github-hosted ]]; then
+            # Record provenance before dropping Git object stores to make room for the build.
+            du -sh .repo
+            rm -rf .repo
+            find . -name .git -type f -delete
+          fi
           df -h .
 
       - name: Build ARM64 vanilla system image
@@ -147,6 +264,7 @@ jobs:
           mkdir -p "$ARTIFACT_DIR"
           system_image="$GITHUB_WORKSPACE/$SOURCE_DIR/$PRODUCT_OUT/system.img"
           sas_dir="$GITHUB_WORKSPACE/sas-creator"
+          rm -rf "$sas_dir"
           git clone --depth=1 --filter=blob:none --no-checkout \
             "$SAS_CREATOR_URL" "$sas_dir"
           git -C "$sas_dir" fetch --depth=1 origin "$SAS_CREATOR_REV"
@@ -172,25 +290,10 @@ jobs:
             "$image" \
             "$ARTIFACT_DIR" \
             '${{ inputs.front_sensor_orientation }}'
-          cd "$SOURCE_DIR"
-          repo manifest -r > "$GITHUB_WORKSPACE/$ARTIFACT_DIR/source-manifest.xml"
-          git -C frameworks/av diff --check
-          git -C frameworks/base diff --check
-          git -C device/phh/treble diff --check
-          git -C packages/modules/NetworkStack diff --check
-          {
-            printf 'treble_release=%s\n' "$TREBLE_RELEASE"
-            printf 'frameworks_av_rev=%s\n' "$FRAMEWORKS_AV_REV"
-            printf 'frameworks_base_rev=%s\n' "$FRAMEWORKS_BASE_REV"
-            printf 'device_phh_treble_rev=%s\n' "$DEVICE_PHH_TREBLE_REV"
-            printf 'networkstack_rev=%s\n' "$NETWORKSTACK_REV"
-            printf 'sas_creator_rev=%s\n' "$SAS_CREATOR_REV"
-            printf 'vendor_vndk_rev=%s\n' "$VENDOR_VNDK_REV"
-            printf 'front_sensor_orientation=%s\n' '${{ inputs.front_sensor_orientation }}'
-            printf 'lunch_target=%s\n' "$LUNCH_TARGET"
-          } > "$GITHUB_WORKSPACE/$ARTIFACT_DIR/build-info.txt"
-          sha256sum "$GITHUB_WORKSPACE/$ARTIFACT_DIR"/* > \
-            "$GITHUB_WORKSPACE/$ARTIFACT_DIR/SHA256SUMS"
+          (
+            cd "$GITHUB_WORKSPACE/$ARTIFACT_DIR"
+            sha256sum -- * > SHA256SUMS
+          )
 
       - name: Upload A-only GSI artifact
         uses: actions/upload-artifact@v7

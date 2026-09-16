@@ -1,0 +1,8 @@
+android_app_import {
+    name: "U90Fcitx5",
+    apk: "Fcitx5.apk",
+    presigned: true,
+    dex_preopt: {
+        enabled: false,
+    },
+}

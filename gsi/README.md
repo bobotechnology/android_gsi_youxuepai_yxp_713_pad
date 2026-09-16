@@ -2,8 +2,9 @@
 
 This directory is a small, pinned build recipe. It does not contain an Android
 source checkout. The GitHub Actions runner downloads the Android 11 source,
-applies the device-specific framework and NetworkStack patches, builds an ARM64 vanilla AB GSI, and converts it to
-the A-only image required by this device.
+applies device-specific framework, Launcher3, and NetworkStack patches, stages
+a pinned Fcitx5 input-method APK, builds an ARM64 vanilla AB GSI, and converts
+it to the A-only image required by this device.
 
 ## Baseline
 
@@ -28,6 +29,38 @@ product characteristic is explicitly set to `tablet`; density remains under
 the working vendor display configuration so the existing touch and orientation
 behavior is preserved.
 
+## Tablet UI
+
+The U90 patch keeps the working vendor display and input configuration intact,
+but gives the stock Android 11 UI a conservative Pixel/Material treatment:
+
+- the framework default accent is Google blue, with a matching light and dark
+  SystemUI notification-shade palette;
+- Launcher3 uses a pale Material-blue all-apps and folder surface in light mode
+  and a cooler blue-gray surface in dark mode;
+- a `6 x 5` workspace with a six-icon dock is selected for a 600dp-or-wider
+  tablet display.
+
+The changes are resource and launcher-profile only. They do not alter SystemUI
+network-validation state, navigation behavior, density, touch handling,
+rotation, the kernel, or any vendor partition. If an existing Launcher3 data
+directory keeps an older grid after an in-place update, clear Launcher3 storage
+once from Settings and return to Home to create the new tablet layout.
+
+## Chinese input method
+
+The build downloads the official ARM64 Fcitx5 Android `0.1.3` release, verifies
+its SHA-256 before staging, and installs it as the ordinary presigned system
+app `U90Fcitx5`. It is not privileged and is not a root component. The bundled
+Fcitx5 app contains Chinese input support; its IME component is
+`org.fcitx.fcitx5.android/.input.FcitxInputMethodService`.
+
+Android requires the user to explicitly enable a third-party IME. After first
+boot, open **Settings > System > Languages & input > On-screen keyboard >
+Manage on-screen keyboards**, enable Fcitx5, then select it from the keyboard
+switcher. This intentional first-use step avoids silently replacing an input
+method without user consent.
+
 ## Front camera patch
 
 The vendor HAL reports camera ID `1` as front-facing with sensor orientation
@@ -48,6 +81,24 @@ PHH v313 base requires a `userdebug` build because it sets
 `SELINUX_IGNORE_NEVERALLOWS := true`; this may permit `adb root`, but it does
 not install a root manager or a persistent `su` binary. Users who need app
 root can patch and flash an appropriate boot image with Magisk separately.
+
+## Runner modes
+
+Manual workflow dispatch exposes two runner inputs in addition to camera
+orientation:
+
+- `github-hosted` is the default. Use `runner_labels` as
+  `["ubuntu-22.04"]` and keep `timeout_minutes` at `360`.
+- For a persistent Linux server, choose `self-hosted`, set `runner_labels` to
+  `["self-hosted","linux","x64","u90-gsi"]`, and use
+  `timeout_minutes` `1440` for the first full build. The runner must have the
+  `u90-gsi` label and passwordless `sudo` for the A-only conversion step.
+
+On self-hosted mode the workflow does not run hosted-runner disk cleanup, does
+not clean the recipe checkout, and preserves `android/.repo`, `android/out`,
+and ccache for incremental syncs and builds. Set `install_dependencies` to
+`false` only after the server has been provisioned with the listed Ubuntu build
+dependencies and the repo tool can be downloaded by the runner account.
 
 ## Mainland network validation
 

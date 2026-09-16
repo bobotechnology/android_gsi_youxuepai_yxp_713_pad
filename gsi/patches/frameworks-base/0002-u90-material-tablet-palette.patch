@@ -1,0 +1,59 @@
+diff --git a/core/res/res/values/colors_material.xml b/core/res/res/values/colors_material.xml
+index d357f010277..06aa5afdb92 100644
+--- a/core/res/res/values/colors_material.xml
++++ b/core/res/res/values/colors_material.xml
+@@ -39,8 +39,8 @@
+     <color name="tertiary_material_settings">@color/material_blue_grey_700</color>
+     <color name="quaternary_material_settings">@color/material_blue_grey_200</color>
+ 
+-    <color name="accent_material_light">@color/material_deep_teal_500</color>
+-    <color name="accent_material_dark">@color/material_deep_teal_200</color>
++    <color name="accent_material_light">#ff1a73e8</color>
++    <color name="accent_material_dark">#ffaecbfa</color>
+ 
+     <color name="button_material_dark">#ff5a595b</color>
+     <color name="button_material_light">#ffd6d7d7</color>
+diff --git a/packages/SystemUI/res/values-night/colors.xml b/packages/SystemUI/res/values-night/colors.xml
+index cb9e178de24..738577fa647 100644
+--- a/packages/SystemUI/res/values-night/colors.xml
++++ b/packages/SystemUI/res/values-night/colors.xml
+@@ -31,7 +31,7 @@
+     <color name="notification_divider_color">#212121</color>
+ 
+     <!-- The background color of the notification shade -->
+-    <color name="notification_shade_background_color">@color/GM2_grey_900</color>
++    <color name="notification_shade_background_color">#ff202633</color>
+ 
+     <!-- The color of the gear shown behind a notification -->
+     <color name="notification_gear_color">@color/GM2_grey_500</color>
+@@ -86,7 +86,7 @@
+ 
+     <!-- Biometric dialog colors -->
+     <color name="biometric_dialog_gray">#ff888888</color>
+-    <color name="biometric_dialog_accent">#ff80cbc4</color> <!-- light teal -->
++    <color name="biometric_dialog_accent">@color/GM2_blue_300</color>
+     <color name="biometric_dialog_error">#fff28b82</color> <!-- red 300 -->
+ 
+     <color name="GM2_green_500">#FF41Af6A</color>
+diff --git a/packages/SystemUI/res/values/colors.xml b/packages/SystemUI/res/values/colors.xml
+index 994a1811026..dbc89680622 100644
+--- a/packages/SystemUI/res/values/colors.xml
++++ b/packages/SystemUI/res/values/colors.xml
+@@ -91,7 +91,7 @@
+     <color name="notification_divider_color">#FF616161</color>
+ 
+     <!-- The background color of the notification shade -->
+-    <color name="notification_shade_background_color">@color/GM2_grey_200</color>
++    <color name="notification_shade_background_color">#fff7f9ff</color>
+ 
+     <!-- The color of the ripples on the untinted notifications -->
+     <color name="notification_ripple_untinted_color">#28000000</color>
+@@ -183,7 +183,7 @@
+     <!-- Biometric dialog colors -->
+     <color name="biometric_dialog_dim_color">#80000000</color>              <!-- 50% black -->
+     <color name="biometric_dialog_gray">#ff757575</color>
+-    <color name="biometric_dialog_accent">#ff008577</color>                 <!-- dark teal -->
++    <color name="biometric_dialog_accent">@color/GM2_blue_600</color>
+     <color name="biometric_dialog_error">#ffd93025</color>                  <!-- red 600 -->
+ 
+     <!-- Logout button -->
