@@ -1,0 +1,52 @@
+name: u90-gsi
+
+services:
+  u90-gsi:
+    image: u90-gsi-builder:android11-v313
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        HTTP_PROXY: "${HTTP_PROXY-http://host.docker.internal:<port>}"
+        HTTPS_PROXY: "${HTTPS_PROXY-http://host.docker.internal:<port>}"
+        ALL_PROXY: "${ALL_PROXY-http://host.docker.internal:<port>}"
+        NO_PROXY: "${NO_PROXY-localhost,127.0.0.1,::1}"
+    init: true
+    working_dir: /work
+    environment:
+      HTTP_PROXY: "${HTTP_PROXY-http://host.docker.internal:<port>}"
+      HTTPS_PROXY: "${HTTPS_PROXY-http://host.docker.internal:<port>}"
+      ALL_PROXY: "${ALL_PROXY-http://host.docker.internal:<port>}"
+      NO_PROXY: "${NO_PROXY-localhost,127.0.0.1,::1}"
+      http_proxy: "${HTTP_PROXY-http://host.docker.internal:<port>}"
+      https_proxy: "${HTTPS_PROXY-http://host.docker.internal:<port>}"
+      all_proxy: "${ALL_PROXY-http://host.docker.internal:<port>}"
+      no_proxy: "${NO_PROXY-localhost,127.0.0.1,::1}"
+      U90_WORK_ROOT: /work
+      U90_SOURCE_DIR: /work/android
+      U90_STATE_DIR: /work/state
+      U90_ARTIFACT_DIR: /artifacts
+      U90_CCACHE_DIR: /work/ccache
+      U90_CCACHE_MAXSIZE: "${U90_CCACHE_MAXSIZE-40G}"
+      U90_FRONT_CAMERA_ORIENTATION: "${U90_FRONT_CAMERA_ORIENTATION-90}"
+      U90_BUILD_JOBS: "${U90_BUILD_JOBS-}"
+      U90_DOCKER_IMAGE: u90-gsi-builder:android11-v313
+    volumes:
+      - ./:/recipe:ro
+      - u90-gsi-android:/work/android
+      - u90-gsi-out:/work/android/out
+      - u90-gsi-ccache:/work/ccache
+      - u90-gsi-state:/work/state
+      - ./artifacts/local:/artifacts
+    entrypoint: ["/bin/bash", "/recipe/gsi/scripts/build-local-docker.sh"]
+    command: ["build"]
+
+volumes:
+  u90-gsi-android:
+    name: u90-gsi-android
+  u90-gsi-out:
+    name: u90-gsi-out
+  u90-gsi-ccache:
+    name: u90-gsi-ccache
+  u90-gsi-state:
+    name: u90-gsi-state

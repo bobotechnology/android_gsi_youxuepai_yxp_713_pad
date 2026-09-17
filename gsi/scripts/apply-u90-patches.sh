@@ -89,6 +89,10 @@ stage_fcitx5() {
         printf '\n$(call inherit-product, device/phh/treble/u90-fcitx5/u90-fcitx5.mk)\n' \
             >> "$target_product"
     fi
+
+    if ! grep -Fqx 'PRODUCT_LOCALES := zh_CN' "$target_product"; then
+        printf '\nPRODUCT_LOCALES := zh_CN\n' >> "$target_product"
+    fi
 }
 
 assert_revision "$SOURCE_ROOT/frameworks/av" "$FRAMEWORKS_AV_REV"

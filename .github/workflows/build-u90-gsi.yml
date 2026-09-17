@@ -186,8 +186,8 @@ jobs:
             "$FCITX5_APK_URL" \
             -o "$apk"
           printf '%s  %s\n' "$FCITX5_APK_SHA256" "$apk" | sha256sum -c -
-          unzip -Z1 "$apk" | grep -Fxq 'AndroidManifest.xml'
-          unzip -Z1 "$apk" | grep -Eq '^lib/arm64-v8a/'
+          unzip -Z1 "$apk" | grep -Fx 'AndroidManifest.xml' >/dev/null
+          unzip -Z1 "$apk" | grep -E '^lib/arm64-v8a/' >/dev/null
           printf 'U90_FCITX5_APK=%s\n' "$apk" >> "$GITHUB_ENV"
 
       - name: Sync Android source on runner
@@ -231,8 +231,7 @@ jobs:
             printf 'device_phh_treble_rev=%s\n' "$DEVICE_PHH_TREBLE_REV"
             printf 'networkstack_rev=%s\n' "$NETWORKSTACK_REV"
             printf 'launcher3_rev=%s\n' "$LAUNCHER3_REV"
-            printf 'sas_creator_rev=%s\n' "$SAS_CREATOR_REV"
-            printf 'vendor_vndk_rev=%s\n' "$VENDOR_VNDK_REV"
+            printf 'system_image_layout=sar\n'
             printf 'fcitx5_version=%s\n' "$FCITX5_VERSION"
             printf 'fcitx5_apk_sha256=%s\n' "$FCITX5_APK_SHA256"
             printf 'fcitx5_ime_component=%s\n' "$FCITX5_IME_COMPONENT"
@@ -258,33 +257,26 @@ jobs:
           m -j"$(nproc)" systemimage
           test -s "$PRODUCT_OUT/system.img"
 
-      - name: Convert AB GSI to A-only image
+      - name: Export system-as-root system image
         run: |
           source gsi/config/u90-a11-v313.env
           mkdir -p "$ARTIFACT_DIR"
           system_image="$GITHUB_WORKSPACE/$SOURCE_DIR/$PRODUCT_OUT/system.img"
-          sas_dir="$GITHUB_WORKSPACE/sas-creator"
-          rm -rf "$sas_dir"
-          git clone --depth=1 --filter=blob:none --no-checkout \
-            "$SAS_CREATOR_URL" "$sas_dir"
-          git -C "$sas_dir" fetch --depth=1 origin "$SAS_CREATOR_REV"
-          git -C "$sas_dir" checkout --detach "$SAS_CREATOR_REV"
-          git clone --depth=1 --filter=blob:none --no-checkout \
-            "$VENDOR_VNDK_URL" "$sas_dir/vendor_vndk"
-          git -C "$sas_dir/vendor_vndk" fetch --depth=1 origin "$VENDOR_VNDK_REV"
-          git -C "$sas_dir/vendor_vndk" checkout --detach "$VENDOR_VNDK_REV"
           export PATH="$GITHUB_WORKSPACE/$SOURCE_DIR/out/host/linux-x86/bin:$PATH"
-          sudo env PATH="$PATH" ANDROID_BUILD_TOP="$GITHUB_WORKSPACE/$SOURCE_DIR" \
-            bash "$sas_dir/run.sh" 64 "$system_image"
-          test -s "$sas_dir/s.img"
-          output="$ARTIFACT_DIR/system-roar-arm64-aonly-vanilla-u90-front${{ inputs.front_sensor_orientation }}.img.xz"
-          xz --threads=0 --check=crc64 -9e -c "$sas_dir/s.img" > "$output"
+          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/$SOURCE_DIR/out/host/linux-x86/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          # The build product is a sparse system-as-root image; the packager and
+          # its stat-based logical-partition size need the raw ext4 form.
+          simg2img "$system_image" "$ARTIFACT_DIR/system_gsi.img"
+          test -s "$ARTIFACT_DIR/system_gsi.img"
+          sha256sum "$ARTIFACT_DIR/system_gsi.img" > "$ARTIFACT_DIR/system_gsi.img.sha256"
+          output="$ARTIFACT_DIR/system-roar-arm64-vanilla-u90-front${{ inputs.front_sensor_orientation }}.img.xz"
+          xz --threads=0 --check=crc64 -9e -c "$ARTIFACT_DIR/system_gsi.img" > "$output"
           sha256sum "$system_image" > "$ARTIFACT_DIR/system-ab.img.sha256"
 
       - name: Verify image and record provenance
         run: |
           source gsi/config/u90-a11-v313.env
-          image="$GITHUB_WORKSPACE/sas-creator/s.img"
+          image="$GITHUB_WORKSPACE/$ARTIFACT_DIR/system_gsi.img"
           bash gsi/scripts/verify-u90-artifact.sh \
             "$SOURCE_DIR/$PRODUCT_OUT" \
             "$image" \
@@ -295,10 +287,10 @@ jobs:
             sha256sum -- * > SHA256SUMS
           )
 
-      - name: Upload A-only GSI artifact
+      - name: Upload system-as-root GSI artifact
         uses: actions/upload-artifact@v7
         with:
-          name: u90-a11-v313-aonly-front${{ inputs.front_sensor_orientation }}-${{ github.run_number }}
+          name: u90-a11-v313-sar-front${{ inputs.front_sensor_orientation }}-${{ github.run_number }}
           path: artifacts/
           if-no-files-found: error
           retention-days: 14
