@@ -2,11 +2,17 @@ diff --git a/services/camera/libcameraservice/common/CameraProviderManager.cpp b
 index 75748e8..fc0c089 100644
 --- a/services/camera/libcameraservice/common/CameraProviderManager.cpp
 +++ b/services/camera/libcameraservice/common/CameraProviderManager.cpp
-@@ -55,6 +55,58 @@ using hardware::camera::provider::V2_6::CameraIdAndStreamCombination;
+@@ -55,6 +55,64 @@ using hardware::camera::provider::V2_6::CameraIdAndStreamCombination;
  
  namespace {
  const bool kEnableLazyHal(property_get_bool("ro.camera.enableLazyHal", false));
 +
++// Camera id 1 is the physical front camera on the U90 (yxp_713_pad). The
++// provider exposes five devices and only the logical multi-camera (id 4)
++// advertises android.logicalMultiCamera.physicalIds, namely 1 and 3, so id 1 is
++// the front module itself and id 3 is its depth helper. That follows from the
++// device's provider layout rather than from a build knob, so the id stays a
++// literal here while the orientation below is read from a property.
 +bool getU90FrontCameraOrientation(const std::string& id, int32_t* orientation) {
 +    if (id != "1" || orientation == nullptr) {
 +        return false;
@@ -61,7 +67,7 @@ index 75748e8..fc0c089 100644
  } // anonymous namespace
  
  const float CameraProviderManager::kDepthARTolerance = .1f;
-@@ -267,7 +319,20 @@ status_t CameraProviderManager::getCameraInfo(const std::string &id,
+@@ -267,7 +325,20 @@ status_t CameraProviderManager::getCameraInfo(const std::string &id,
      auto deviceInfo = findDeviceInfoLocked(id);
      if (deviceInfo == nullptr) return NAME_NOT_FOUND;
  
@@ -83,7 +89,7 @@ index 75748e8..fc0c089 100644
  }
  
  status_t CameraProviderManager::isSessionConfigurationSupported(const std::string& id,
-@@ -3079,14 +3144,23 @@ status_t CameraProviderManager::getCameraCharacteristicsLocked(const std::string
+@@ -3079,14 +3150,23 @@ status_t CameraProviderManager::getCameraCharacteristicsLocked(const std::string
          CameraMetadata* characteristics) const {
      auto deviceInfo = findDeviceInfoLocked(id, /*minVersion*/ {3,0}, /*maxVersion*/ {5,0});
      if (deviceInfo != nullptr) {

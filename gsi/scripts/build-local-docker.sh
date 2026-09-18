@@ -148,8 +148,30 @@ sync_android_source() {
     )
 }
 
+# The recipe owns every tree it patches. Reset them to their pinned revisions
+# before applying the patch sets: apply-u90-patches.sh is idempotent for a given
+# patch, but a rebuild that follows an edit to a patch would otherwise either
+# abort with "patch neither applies nor matches the existing tree" or apply the
+# new hunks on top of the previous version's hunks.
+reset_patched_trees() {
+    local checkout
+
+    for checkout in \
+        frameworks/av \
+        frameworks/base \
+        frameworks/native \
+        system/core \
+        device/phh/treble \
+        packages/modules/NetworkStack \
+        packages/apps/Launcher3; do
+        test -d "$SOURCE_DIR/$checkout" || die "patched checkout is missing: $checkout"
+        git -C "$SOURCE_DIR/$checkout" checkout -- .
+    done
+}
+
 prepare_android_source() {
     test -d "$SOURCE_DIR/.repo" || die 'Android source has not been synced'
+    reset_patched_trees
     git -C "$SOURCE_DIR/device/phh/treble" clean -fdx
     (
         cd "$SOURCE_DIR/device/phh/treble"

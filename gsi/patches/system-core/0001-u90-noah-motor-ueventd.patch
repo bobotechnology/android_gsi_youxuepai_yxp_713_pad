@@ -1,0 +1,10 @@
+diff --git a/rootdir/ueventd.rc b/rootdir/ueventd.rc
+index 081037d..84a0fee 100644
+--- a/rootdir/ueventd.rc
++++ b/rootdir/ueventd.rc
+@@ -67,3 +67,5 @@ subsystem sound
+ /sys/devices/virtual/usb_composite/*   enable      0664  root   system
+ /sys/devices/system/cpu/cpu*   cpufreq/scaling_max_freq   0664  system system
+ /sys/devices/system/cpu/cpu*   cpufreq/scaling_min_freq   0664  system system
++# U90 front-camera lift motor
++/dev/NOAH_MOTOR           0666   root       root

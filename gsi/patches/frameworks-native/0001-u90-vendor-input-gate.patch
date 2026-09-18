@@ -1,0 +1,43 @@
+diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
+--- a/services/surfaceflinger/SurfaceFlinger.cpp
++++ b/services/surfaceflinger/SurfaceFlinger.cpp
+@@ -49,4 +49,6 @@
+ #include <dvr/vr_flinger.h>
+ #include <errno.h>
++#include <fcntl.h>
++#include <unistd.h>
+ #include <gui/BufferQueue.h>
+ #include <gui/DebugEGLImageTracker.h>
+@@ -611,3 +613,15 @@
+     property_set("service.bootanim.exit", "1");
+ 
++    // U90: the stock kernel gates the Himax touchscreen and several vendor
++    // sensor drivers on the bootprof marker "BOOT_Animation:END". The stock
++    // MediaTek SurfaceFlinger wrote that marker when the boot animation
++    // finished; this AOSP SurfaceFlinger never does, so those drivers stay
++    // muted and the touchscreen reports nothing. Only the surfaceflinger
++    // SELinux domain is permitted to write /proc/bootprof on this device.
++    if (int u90GateFd = ::open("/proc/bootprof", O_WRONLY | O_CLOEXEC); u90GateFd >= 0) {
++        static const char kU90GateMarker[] = "BOOT_Animation:END";
++        static_cast<void>(::write(u90GateFd, kU90GateMarker, sizeof(kU90GateMarker) - 1));
++        ::close(u90GateFd);
++    }
++
+     const int LOGTAG_SF_STOP_BOOTANIM = 60110;
+@@ -745,5 +759,15 @@
+     if (mStartPropertySetThread->Start() != NO_ERROR) {
+         ALOGE("Run StartPropertySetThread failed!");
+     }
+ 
++    // U90: arm the vendor input gate as early as possible too. Writing the
++    // marker twice is intentional and harmless: the kernel only string-compares
++    // it and sets a flag, while the usable window opens early and closes again
++    // when the vendor init script disables bootprof logging.
++    if (int u90GateFd = ::open("/proc/bootprof", O_WRONLY | O_CLOEXEC); u90GateFd >= 0) {
++        static const char kU90GateMarker[] = "BOOT_Animation:END";
++        static_cast<void>(::write(u90GateFd, kU90GateMarker, sizeof(kU90GateMarker) - 1));
++        ::close(u90GateFd);
++    }
++
+     ALOGV("Done initializing");
+ }

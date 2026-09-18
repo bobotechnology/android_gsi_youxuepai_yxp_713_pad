@@ -1,0 +1,8 @@
+cc_binary {
+    name: "u90-motor",
+    srcs: ["u90-motor.cpp"],
+    cflags: [
+        "-Wall",
+        "-Werror",
+    ],
+}

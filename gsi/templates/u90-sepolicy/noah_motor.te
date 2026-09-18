@@ -1,0 +1,13 @@
+# The U90 front-camera lift exposes /dev/NOAH_MOTOR (char 215:0). The stock
+# system labelled it with the generic "device" type and granted 0666 through
+# its ueventd rules; give it a dedicated type here so the access is explicit
+# instead of falling back to a blanket rule on "device".
+#
+# This must not use type "device": system/sepolicy/public/domain.te carries
+# "neverallow domain device:chr_file { open read write }", so cameraserver could
+# never be granted the node under that type.
+type noah_motor_device, dev_type;
+
+allow cameraserver noah_motor_device:chr_file rw_file_perms;
+allow shell noah_motor_device:chr_file rw_file_perms;
+allow su noah_motor_device:chr_file rw_file_perms;
