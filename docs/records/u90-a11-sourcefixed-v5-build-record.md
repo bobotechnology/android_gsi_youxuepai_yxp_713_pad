@@ -5,7 +5,7 @@
 This v5 path used the `sas-creator` A-only conversion and is superseded. Its
 A-only output has no `/system/bin/init`, so the device panicked back to fastboot
 on every boot and the artifact is not bootable. See
-`docs/u90-a11-v313-sar-build-record.md` for the root cause and the validated
+`docs/records/u90-a11-v313-sar-build-record.md` for the root cause and the validated
 system-as-root build path.
 
 This record covers the locally built Android 11 GSI and its complete dynamic

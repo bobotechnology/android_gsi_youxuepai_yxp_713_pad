@@ -2,3 +2,6 @@
 /artifacts/
 /manifest/
 /output/
+
+# Local Docker Compose interpolation overrides (proxy settings).
+/.env

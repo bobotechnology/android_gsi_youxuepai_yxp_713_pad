@@ -7,7 +7,7 @@ recipe is fixed. The stock U90 ramdisk first-stage init unconditionally execs
 `/system/bin/init`, and the `sas-creator` A-only image used for P2 does not
 contain that path. Packaging the raw system-as-root build product instead was
 verified to boot Android 11 on the device. See
-`docs/u90-a11-v313-sar-build-record.md`. Keep this document only as the record
+`docs/records/u90-a11-v313-sar-build-record.md`. Keep this document only as the record
 of the P0-P4 controlled sequence; its "recommended next-agent sequence" below
 is historical and no longer the plan.
 

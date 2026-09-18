@@ -7,20 +7,20 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       args:
-        HTTP_PROXY: "${HTTP_PROXY-http://host.docker.internal:<port>}"
-        HTTPS_PROXY: "${HTTPS_PROXY-http://host.docker.internal:<port>}"
-        ALL_PROXY: "${ALL_PROXY-http://host.docker.internal:<port>}"
+        HTTP_PROXY: "${HTTP_PROXY-}"
+        HTTPS_PROXY: "${HTTPS_PROXY-}"
+        ALL_PROXY: "${ALL_PROXY-}"
         NO_PROXY: "${NO_PROXY-localhost,127.0.0.1,::1}"
     init: true
     working_dir: /work
     environment:
-      HTTP_PROXY: "${HTTP_PROXY-http://host.docker.internal:<port>}"
-      HTTPS_PROXY: "${HTTPS_PROXY-http://host.docker.internal:<port>}"
-      ALL_PROXY: "${ALL_PROXY-http://host.docker.internal:<port>}"
+      HTTP_PROXY: "${HTTP_PROXY-}"
+      HTTPS_PROXY: "${HTTPS_PROXY-}"
+      ALL_PROXY: "${ALL_PROXY-}"
       NO_PROXY: "${NO_PROXY-localhost,127.0.0.1,::1}"
-      http_proxy: "${HTTP_PROXY-http://host.docker.internal:<port>}"
-      https_proxy: "${HTTPS_PROXY-http://host.docker.internal:<port>}"
-      all_proxy: "${ALL_PROXY-http://host.docker.internal:<port>}"
+      http_proxy: "${HTTP_PROXY-}"
+      https_proxy: "${HTTPS_PROXY-}"
+      all_proxy: "${ALL_PROXY-}"
       no_proxy: "${NO_PROXY-localhost,127.0.0.1,::1}"
       U90_WORK_ROOT: /work
       U90_SOURCE_DIR: /work/android

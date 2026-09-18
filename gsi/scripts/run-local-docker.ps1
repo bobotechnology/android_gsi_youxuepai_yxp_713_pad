@@ -9,7 +9,7 @@ param(
     [ValidateRange(0, 128)]
     [int]$Jobs = 0,
 
-    [string]$Proxy = 'http://host.docker.internal:<port>',
+    [string]$Proxy = '',
 
     [string]$FirmwareDir = '',
 
@@ -60,7 +60,7 @@ if ($NoProxy) {
     $env:HTTPS_PROXY = ''
     $env:ALL_PROXY = ''
     $env:NO_PROXY = ''
-} else {
+} elseif ($Proxy) {
     if (-not $env:HTTP_PROXY) { $env:HTTP_PROXY = $Proxy }
     if (-not $env:HTTPS_PROXY) { $env:HTTPS_PROXY = $env:HTTP_PROXY }
     if (-not $env:ALL_PROXY) { $env:ALL_PROXY = $env:HTTP_PROXY }

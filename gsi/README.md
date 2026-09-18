@@ -1,12 +1,11 @@
 # U90 Android 11 GSI build recipe
 
 This directory is a small, pinned build recipe. It does not contain an Android
-source checkout. The GitHub Actions runner downloads the Android 11 source,
-applies device-specific framework, Launcher3, and NetworkStack patches, stages
-a pinned Fcitx5 input-method APK, builds an ARM64 vanilla AB GSI, and exports
-it as the system-as-root image required by this device. Local Docker mode can
-then make a complete `super` package from that image and the known stock flash
-package.
+source checkout. A local Docker build downloads the Android 11 source, applies
+device-specific framework, Launcher3, and NetworkStack patches, stages a pinned
+Fcitx5 input-method APK, builds an ARM64 vanilla AB GSI, and exports it as the
+system-as-root image required by this device. Package mode then makes a complete
+`super` package from that image and the known stock flash package.
 
 ## Baseline
 
@@ -15,8 +14,8 @@ package.
 - Product: `treble_arm64_bvN-userdebug` (rootless PHH-compatible build)
 - Output: `system-roar-arm64-vanilla-u90-front<orientation>.img.xz`
 
-The pinned revisions are in `config/u90-a11-v313.env`. The workflow validates
-the release manifest SHA-256 and the source revisions before applying patches.
+The pinned revisions are in `config/u90-a11-v313.env`. The build validates the
+release manifest SHA-256 and the source revisions before applying patches.
 
 ## Chinese and settings defaults
 
@@ -71,9 +70,8 @@ The vendor HAL reports camera ID `1` as front-facing with sensor orientation
 and API1 camera info. The patch is inactive unless that read-only property is
 present in the built image.
 
-The workflow accepts `0`, `90`, `180`, or `270` as a manual-dispatch input.
-`90` is the initial 180-degree correction candidate; `270` is the no-change
-control value.
+`-FrontSensorOrientation` accepts `0`, `90`, `180`, or `270`. `90` is the initial
+180-degree correction candidate; `270` is the no-change control value.
 
 ## Root
 
@@ -84,31 +82,22 @@ PHH v313 base requires a `userdebug` build because it sets
 not install a root manager or a persistent `su` binary. Users who need app
 root can patch and flash an appropriate boot image with Magisk separately.
 
-## Runner modes
-
-Manual workflow dispatch exposes two runner inputs in addition to camera
-orientation:
-
-- `github-hosted` is the default. Use `runner_labels` as
-  `["ubuntu-22.04"]` and keep `timeout_minutes` at `360`.
-- For a persistent Linux server, choose `self-hosted`, set `runner_labels` to
-  `["self-hosted","linux","x64","u90-gsi"]`, and use
-  `timeout_minutes` `1440` for the first full build. The runner must have the
-  `u90-gsi` label; the exported system image needs no privilege or `sudo`.
-
-On self-hosted mode the workflow does not run hosted-runner disk cleanup, does
-not clean the recipe checkout, and preserves `android/.repo`, `android/out`,
-and ccache for incremental syncs and builds. Set `install_dependencies` to
-`false` only after the server has been provisioned with the listed Ubuntu build
-dependencies and the repo tool can be downloaded by the runner account.
-
 ## Local Docker mode
 
 Windows Docker Desktop can run the same pinned build locally through
-`gsi/scripts/run-local-docker.ps1`. It defaults to
-`http://host.docker.internal:<port>`, which is the local Xray mixed proxy exposed
-to Docker on the development host. Override it with `-Proxy`, or use `-NoProxy`
-when direct access is available.
+`gsi/scripts/run-local-docker.ps1`. No proxy is assumed. When the Android source
+sync or the image build needs one, put it in an untracked `.env` file at the
+repository root:
+
+```text
+HTTP_PROXY=http://host.docker.internal:<port>
+HTTPS_PROXY=http://host.docker.internal:<port>
+```
+
+Docker Compose interpolates that file, so a local proxy never enters version
+control. `-Proxy <url>` sets the value for a single run when the shell
+environment does not already define one. `-NoProxy` clears inherited proxy
+variables instead.
 
 The Compose file keeps the large Android source, `out`, ccache, and pinned
 manifest state in named volumes. The checked-out recipe is mounted read-only at
@@ -146,26 +135,27 @@ when the selected endpoint returns HTTP 204.
 
 ## Build and artifacts
 
-Run the `Build U90 Android 11 GSI` workflow manually. It uploads:
+A build writes into `artifacts/local/<BuildName>/`:
 
-- the compressed system-as-root `system` image;
-- SHA-256 checksums;
-- the resolved source manifest;
-- build metadata.
+- `system_gsi.img`, the raw system-as-root ext4 image, plus its `.sha256`;
+- `system-roar-arm64-vanilla-u90-front<orientation>.img.xz`, the compressed form;
+- `SHA256SUMS`, the resolved `source-manifest.xml`, and `build-info.txt`.
 
-The workflow builds only `system`. It does not generate or flash `super`, and
-does not modify `boot`, `vendor`, `dtbo`, or any `vbmeta` image.
+A build produces `system` only. It never generates or flashes `super`, and never
+modifies `boot`, `vendor`, `dtbo`, or any `vbmeta` image. Packaging is a separate
+`-Mode package` step.
 
-Decompress the artifact before flashing:
+`system_gsi.img` is already raw, which is what the packager consumes. Decompress
+the `.xz` only when you intend to flash a system image directly:
 
 ```bash
 xz -dk system-roar-arm64-vanilla-u90-front90.img.xz
 ```
 
-## Complete super package (local Docker only)
+## Complete super package
 
-The package command is deliberately separate from the GitHub workflow because
-it requires the local stock flash package. It uses only the AOSP host tools
+The package command is a separate step because it requires the local stock flash
+package. It uses only the AOSP host tools
 `simg2img`, `lpdump`, `lpunpack`, `lpmake`, and `avbtool`:
 
 ```powershell

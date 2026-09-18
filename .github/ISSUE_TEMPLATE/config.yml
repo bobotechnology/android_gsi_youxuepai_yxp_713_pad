@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 刷机步骤与回滚
+    url: https://github.com/bobotechnology/android_gsi_youxuepai_yxp_713_pad/blob/main/docs/FLASHING.md
+    about: 解锁、刷入、首启与回滚原厂固件的完整流程。
+  - name: 私有漏洞报告
+    url: https://github.com/bobotechnology/android_gsi_youxuepai_yxp_713_pad/security/advisories/new
+    about: 安全问题请走私有渠道，不要开公开 issue。

@@ -1,0 +1,105 @@
+name: 问题报告
+description: 报告构建失败、刷机失败或设备行为异常。
+title: "[问题] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提交前请先读 [CONTRIBUTING.md](https://github.com/bobotechnology/android_gsi_youxuepai_yxp_713_pad/blob/main/CONTRIBUTING.md)。
+
+        本仓库只服务优学派 U90（`yxp_713_pad`，MT6779）这一个机型。其他机型的问题会被关闭。
+
+        没有现场信息的问题无法定位。日志请务必先执行 `adb logcat -G 16M` 再复现 ——
+        默认 256 KiB 的缓冲区会被相机预览几秒刷满，把关键行挤掉。
+
+  - type: input
+    id: firmware
+    attributes:
+      label: 原厂固件包名
+      description: 刷机前设备上的原厂固件包名。
+      placeholder: P713mt6779_20221129_2216
+    validations:
+      required: true
+
+  - type: dropdown
+    id: image-source
+    attributes:
+      label: 镜像来源
+      options:
+        - 本地 Docker 构建（gsi/scripts/run-local-docker.ps1）
+        - 第三方或他人提供的镜像
+        - 其他
+    validations:
+      required: true
+
+  - type: input
+    id: image-identity
+    attributes:
+      label: 构建标识与校验和
+      description: 本地构建的 BuildName；附上所用 system 镜像的 SHA-256。
+      placeholder: "u90-a11-sourcefixed-v5 / sha256: ..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: stage
+    attributes:
+      label: 出问题的阶段
+      options:
+        - 源码同步或补丁应用
+        - 镜像构建
+        - super 打包
+        - 刷入
+        - 开机
+        - 开机后的设备行为
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 期望发生什么，实际发生了什么，从什么时候开始。
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 逐条列出。如果涉及真实设备行为，说明本次改动只动了哪一个变量。
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 关键读数
+      description: 至少要给出适用的那几项。相机问题给 dumpsys；马达问题给 motor_position；开机问题给 recovery state。
+      placeholder: |
+        adb shell dumpsys media.camera
+
+        adb shell cat /sys/devices/platform/noah_motor/motor_position
+
+        adb logcat -G 16M  后复现，再抓全量 logcat：
+
+        .\tools\collect-u90-recovery-state.ps1 -FullLogicalHashes
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: 确认
+      options:
+        - label: 已阅读 CONTRIBUTING.md
+          required: true
+        - label: 抓日志前执行过 `adb logcat -G 16M`
+          required: true
+        - label: 涉及设备行为时，只改动了一个变量，并附上了改动前后的读数
+          required: true
+        - label: 这是 U90 / yxp_713_pad 上的问题
+          required: true
