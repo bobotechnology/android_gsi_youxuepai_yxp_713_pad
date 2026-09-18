@@ -248,8 +248,8 @@ require hall_usable != 0           ; [p+0x405], else "hall can not use" + return
 
 `is_test` is settable from userspace with `nr 7` and overrides the check, so on
 a unit that reports unusable Hall feedback `u90-motor raw 7 1` is the documented
-escape hatch. That path is deliberately not wired into any automatic flow: with
-the Hall loop unavailable the motor has no way to stop itself at the target.
+escape hatch. It is not wired into any automatic flow: with the Hall loop
+unavailable the motor has no way to stop itself at the target.
 
 On the working unit neither guard blocks: `is_calibrated = 1`,
 `hall_usable = 1`, and `nr 1` moves the lift in both directions with the kernel
@@ -349,7 +349,7 @@ camera, both scoped to the front camera id:
 - `CameraService::BasicClient::disconnect()` next to the existing
   `physicalFrontCam(false)`
 
-Upstream `physicalFrontCam()` is deliberately left untouched. It takes a bare
+Upstream `physicalFrontCam()` is left untouched. It takes a bare
 `bool`, so its `false` cannot be told apart between "the front camera was
 released" and "some other camera was opened or closed"; routing the U90 branch
 through it would retract the lift whenever any other camera is touched while the
@@ -363,13 +363,13 @@ It sends `nr 1` with mode 3 to raise and mode 2 to retract. The earlier revision
 of this patch used `nr 8` and `nr 2` (mirroring the stock factory-test table) and
 therefore did nothing at all: both are empty stubs.
 
-Known limitation of hooking at `connect()`. The sensor is opened at the same
+Hook timing. The sensor is opened at the same
 moment the lift starts moving, and the lift needs about 1.3 s to travel
 (`1681.98` to `1683.26` in the kernel log above), so the first frames of a front
 camera session are captured before the module has reached the selfie position.
 The vendor avoided this by raising the lift on an app-launch broadcast, before
 the sensor was opened. Raising it earlier here would require the same kind of
-launch heuristic, which is out of scope. The hook deliberately does not wait for
+launch heuristic, which is out of scope. The hook does not wait for
 the move to finish, because it runs while `mServiceLock` is held and blocking
 there for over a second would stall every other camera connection.
 
@@ -392,13 +392,13 @@ upstream PHH hook and the front-camera orientation override already target.
 
 That id is hardcoded as `"1"` in both `frameworks/av` patches
 (`getU90FrontCameraOrientation()` and `kU90FrontCameraId`), and upstream's own
-`physicalFrontCam(cameraId == "1")` does the same. It is deliberately left as a
-device constant rather than moved to a property: the value follows from the
-provider layout of exactly one SKU, and unlike the sensor orientation — which had
-four plausible values and was settled experimentally, so it is read from
-`ro.u90.camera.front.orientation` — there is no other candidate to choose between
-at build time. A property would only add a way to set it wrong, with the failure
-mode being a silently missing lift rather than a visible error.
+`physicalFrontCam(cameraId == "1")` does the same. It stays a device constant
+rather than a property: the value follows from the provider layout of exactly one
+SKU, and the sensor orientation is different in kind. That one had four plausible
+values and was settled experimentally, so it is read from
+`ro.u90.camera.front.orientation`; the camera id has no other candidate to choose
+between at build time. A property would only add a way to set it wrong, with the
+failure mode being a silently missing lift rather than a visible error.
 
 ## Verification ladder
 
@@ -414,7 +414,7 @@ back before and after.
 | 5     | retract the lift                    | `motor_position` returns to `position_bottom`                   | pass   |
 | 6     | enable the `CameraService` hook     | front camera raises and retracts automatically                  | pass   |
 
-Stage 1 is deliberately first: it validates the whole build/package/flash chain
+Stage 1 comes first: it validates the whole build/package/flash chain
 with an already-proven patch before any mechanical risk is introduced.
 
 Notes on the recorded results:

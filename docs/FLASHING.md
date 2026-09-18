@@ -2,7 +2,7 @@
 
 本文覆盖优学派 U90（`yxp_713_pad`，MT6779）刷入 GSI 的完整流程与回滚方式。
 
-> 刷机会关闭 AVB 校验并需要解锁 bootloader。请先读 [SECURITY.md](../SECURITY.md)。
+> 刷机需要解锁 bootloader，并关闭 AVB 校验。产物没有经过任何安全审计，风险自负。
 
 ## 前置条件
 
@@ -101,7 +101,7 @@ adb shell getprop ro.build.version.release  # 期望 11
 前摄相关需要手动确认一次：设备的物理前摄是 **camera id 1**。
 
 ```bash
-adb shell dumpsys media.camera | Select-String 'Camera ID'
+adb shell dumpsys media.camera | grep 'Camera ID'
 ```
 
 马达位置可以独立读回：
@@ -172,10 +172,6 @@ sync
 
 ## 实测状态
 
-本仓库的验证阶梯与逐级读数在
-[u90-vendor-gate-and-motor-design.md](u90-vendor-gate-and-motor-design.md) 里，
-过程记录（含失败的尝试与当时的归因）在 [records/](records/) 下。
+已验证：只刷 `super` 可正常开机；前摄（id 1）出图；前摄会话自动抬起马达、断开后收回；触屏可用；Fcitx5 可启用。
 
-已验证：只刷 `super` 可正常开机；前摄（id 1）出图；前摄会话自动抬起马达、断开后收回；触屏可用；Fcitx5 可启用；大陆网络校验端点生效。
-
-已知限制：前摄抬起需要约 1.3 秒，钩子挂在 `connect()` 上，因此会话最初几帧可能拍到尚未到位的画面；设备无 root（`N` 变体不含 `phh-su`）；`screencap` 抓不到硬件 overlay 层。
+验证阶梯的逐级读数与内核逆向证据在 [u90-vendor-gate-and-motor-design.md](u90-vendor-gate-and-motor-design.md)，失败尝试与当时的归因在 [records/](records/) 下。

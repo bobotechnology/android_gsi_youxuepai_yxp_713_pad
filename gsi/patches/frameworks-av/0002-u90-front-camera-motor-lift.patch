@@ -13,34 +13,24 @@ index e02626f..9e89285 100644
  
  #include <android/hardware/ICamera.h>
  #include <android/hardware/ICameraClient.h>
-@@ -1640,6 +1644,55 @@ Status CameraService::connectDevice(
+@@ -1640,6 +1644,45 @@ Status CameraService::connectDevice(
      return ret;
  }
  
-+// The U90 (yxp_713_pad) front camera sits on a lift driven through
-+// /dev/NOAH_MOTOR. The driver subtracts 0x40c44d00 from the whole command word
-+// and indexes a 17-entry jump table, so dir, type, and size must all match;
-+// anything else returns 0 without doing anything. That table has exactly one
-+// real movement command, 0x40c44d01, and it takes the target mode as its int
-+// argument: 1 = position_top, 2 = position_bottom, 3 = position_selfie. The
-+// stock factory-test library's table {00,01,02,08} therefore contains three
-+// stubs (nr 2 and nr 8 do nothing at all), which is why this uses nr 1.
++// The U90 front camera sits on a lift driven through /dev/NOAH_MOTOR. The
++// driver subtracts 0x40c44d00 from the whole command word and indexes a
++// 17-entry jump table, so dir, type, and size must all match. That table has one
++// real movement command, 0x40c44d01, taking the target mode as its argument:
++// 1 = position_top, 2 = position_bottom, 3 = position_selfie. The stock
++// factory-test library routes two of its modes to nr 2 and nr 8, which are empty
++// stubs, so this uses nr 1.
 +//
-+// The Hall closed loop lives in the kernel, so the request returns as soon as
-+// the motor starts; this does not wait for the move to finish, because the
-+// camera stack only needs the module to be on its way up before the sensor is
-+// opened.
-+//
-+// This is driven from the two places that already track the physical front
-+// camera, but scoped to the front camera id. CameraService::physicalFrontCam()
-+// cannot be reused for the call: it takes a bare bool, so its "false" is
-+// indistinguishable between "the front camera was released" and "some other
++// physicalFrontCam() cannot carry this: it takes a bare bool, so its "false"
++// cannot be told apart between "the front camera was released" and "some other
 +// camera was opened or closed", and the latter would retract the lift while the
-+// front camera is still streaming.
++// front camera is still streaming. Hence the front camera id check below.
 +//
-+// Camera id 1 is the physical front camera on the U90, as established for the
-+// orientation override next door; it follows from the device's provider layout,
-+// so it is a device constant and not a build-time knob.
++// Id 1 is the physical front camera on this device, not a build-time knob.
 +constexpr char kU90FrontCameraId[] = "1";
 +constexpr unsigned long kU90MotorRequestMove = 0x40c44d01UL;
 +constexpr int kU90MotorModeSelfie = 3;
@@ -69,7 +59,7 @@ index e02626f..9e89285 100644
  template<class CALLBACK, class CLIENT>
  Status CameraService::connectHelper(const sp<CALLBACK>& cameraCb, const String8& cameraId,
          int api1CameraId, int halVersion, const String16& clientPackageName,
-@@ -1801,6 +1854,9 @@ Status CameraService::connectHelper(const sp<CALLBACK>& cameraCb, const String8&
+@@ -1801,6 +1844,9 @@ Status CameraService::connectHelper(const sp<CALLBACK>& cameraCb, const String8&
          } else {
              // Otherwise, add client to active clients list
              physicalFrontCam(cameraId == "1");
@@ -79,7 +69,7 @@ index e02626f..9e89285 100644
              finishConnectLocked(client, partial);
          }
      } // lock is destroyed, allow further connect calls
-@@ -2892,6 +2948,10 @@ binder::Status CameraService::BasicClient::disconnect() {
+@@ -2892,6 +2938,10 @@ binder::Status CameraService::BasicClient::disconnect() {
  
      sCameraService->physicalFrontCam(false);
  

@@ -2,8 +2,8 @@
 
 This document is an evidence log for the U90 (`yxp_713_pad`, MT6779)
 compatibility investigation. It records only artifacts reproduced from the
-stock flash package and the attached device. Conclusions remain explicitly
-scoped to the supporting evidence.
+stock flash package and the attached device, and each conclusion is scoped to
+the evidence under it.
 
 ## Inputs
 

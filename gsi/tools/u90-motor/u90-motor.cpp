@@ -1,16 +1,7 @@
 /*
  * U90 (yxp_713_pad) front-camera lift motor control.
  *
- * One movement request reaches the driver, and the target is its int argument:
- *
- *     fd = open("/dev/NOAH_MOTOR", O_RDWR);
- *     int mode = <target>;
- *     ioctl(fd, 0x40c44d01, &mode);
- *
- * The driver always reads the argument as a pointer, so a pointer to a scratch
- * area is required. The movement requests only read the first int, but other
- * requests in the same family write larger structures, so every request gets a
- * buffer sized for the largest of them (see kMaxRequestBytes below).
+ *   ioctl(fd, 0x40c44d01, &mode)
  *
  *   mode 0  stop    motor stops where it is
  *   mode 1  AR      position_top     (raised fully, lens faces down)
@@ -18,17 +9,11 @@
  *   mode 3  selfie  position_selfie  (raised partly, lens faces the user)
  *   mode 4  phy_middle
  *
- * Do not follow the stock /system/lib64/libfactorytestjni.so here. Its
- * startMotor(mode) does `ioctl(fd, table[mode], &v)` with v hardcoded to 1 and
- * table = {nr 0, nr 1, nr 2, nr 8}, which sends mode 2 and mode 3 to nr 2 and
- * nr 8 -- both of which are empty stubs in this kernel that return success
- * without moving anything. Only table[0] and table[1] do real work, and
- * table[1] always moves to mode 1. The vendor's real control path passed the
- * target as the argument to nr 1 instead, which is what this tool does.
- *
- * The Hall closed loop lives in the kernel, so a movement request returns as
- * soon as the motor starts. This tool polls sysfs for the resulting position
- * and never retries, so a blocked mechanism cannot be driven against a stall.
+ * Do not copy the stock /system/lib64/libfactorytestjni.so. Its startMotor(mode)
+ * sends table[mode] with the ioctl argument hardcoded to 1, and with
+ * table = {nr 0, nr 1, nr 2, nr 8} that routes mode 2 and mode 3 to empty stubs.
+ * The vendor's real control path sent nr 1 and passed the target as the
+ * argument, which is what this tool does. The jump table below is authoritative.
  */
 
 #include <errno.h>
@@ -70,9 +55,7 @@ constexpr char kSysfsRoot[] = "/sys/devices/platform/noah_motor";
 //   nr 16  set/clear irq_enable      implemented
 //
 // So the stock factory-test table {00,01,02,08} has exactly one real movement
-// command: nr 1. The mode is the int argument, and noah_motor_control indexes
-// its position table with it: 1 -> position_top, 2 -> position_bottom,
-// 3 -> position_selfie, 4 -> position_phy_middle.
+// command, nr 1, and the target mode is its int argument.
 constexpr unsigned long kRequestStop = 0x40c44d00UL;
 constexpr unsigned long kRequestMove = 0x40c44d01UL;
 

@@ -24,7 +24,7 @@ diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinge
 +    }
 +
      const int LOGTAG_SF_STOP_BOOTANIM = 60110;
-@@ -745,5 +759,15 @@
+@@ -745,6 +759,16 @@
      if (mStartPropertySetThread->Start() != NO_ERROR) {
          ALOGE("Run StartPropertySetThread failed!");
      }
